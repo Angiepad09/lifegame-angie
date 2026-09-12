@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LifeGame Angie - Tu Aventura Profesional</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+                    },
+                    animation: {
+                        'float-up': 'floatUp 1s ease-out forwards',
+                        'shake': 'shake 0.4s ease-in-out',
+                        'bounce-slow': 'bounce 3s infinite',
+                        'attack-l': 'attackLeft 0.3s ease-in-out',
+                        'attack-r': 'attackRight 0.3s ease-in-out',
+                    },
+                    keyframes: {
+                        floatUp: {
+                            '0%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+                            '100%': { opacity: '0', transform: 'translateY(-50px) scale(1.5)' },
+                        },
+                        shake: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '25%': { transform: 'translateX(-8px)' },
+                            '50%': { transform: 'translateX(8px)' },
+                            '75%': { transform: 'translateX(-8px)' },
+                        },
+                        attackLeft: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '50%': { transform: 'translateX(30px) scale(1.1)' },
+                        },
+                        attackRight: {
+                            '0%, 100%': { transform: 'translateX(0)' },
+                            '50%': { transform: 'translateX(-30px) scale(1.1)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel for JSX compilation in browser -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Tone.js for Sound Effects -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    
+    <style>
+        body {
+            background-color: #020617;
+            color: #cbd5e1;
+            overflow-anchor: none;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        .pixel-corners {
+            clip-path: polygon(0 4px, 4px 4px, 4px 0, calc(100% - 4px) 0, calc(100% - 4px) 4px, 100% 4px, 100% calc(100% - 4px), calc(100% - 4px) calc(100% - 4px), calc(100% - 4px) 100%, 4px 100%, 4px calc(100% - 4px), 0 calc(100% - 4px));
+        }
+    </style>
+</head>
+<body class="bg-slate-950 text-slate-300 font-mono antialiased overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const TerminalIcon = (props) => <i data-lucide="terminal" {...props}></i>;
+        const UserIcon = (props) => <i data-lucide="user" {...props}></i>;
+        const TargetIcon = (props) => <i data-lucide="target" {...props}></i>;
+        const TrophyIcon = (props) => <i data-lucide="trophy" {...props}></i>;
+        const SwordsIcon = (props) => <i data-lucide="swords" {...props}></i>;
+        const ShieldIcon = (props) => <i data-lucide="shield" {...props}></i>;
+        const BookOpenIcon = (props) => <i data-lucide="book-open" {...props}></i>;
+        const BriefcaseIcon = (props) => <i data-lucide="briefcase" {...props}></i>;
+        const DollarSignIcon = (props) => <i data-lucide="dollar-sign" {...props}></i>;
+        const PlayCircleIcon = (props) => <i data-lucide="play-circle" {...props}></i>;
+        const AlertTriangleIcon = (props) => <i data-lucide="alert-triangle" {...props}></i>;
+        const GiftIcon = (props) => <i data-lucide="gift" {...props}></i>;
+        const StarIcon = (props) => <i data-lucide="star" {...props}></i>;
+        const CheckCircleIcon = (props) => <i data-lucide="check-circle" {...props}></i>;
+        const XCircleIcon = (props) => <i data-lucide="x-circle" {...props}></i>;
+        // Monster Icons
+        const GhostIcon = (props) => <i data-lucide="ghost" {...props}></i>;
+        const FlameIcon = (props) => <i data-lucide="flame" {...props}></i>;
+        const SmartphoneIcon = (props) => <i data-lucide="smartphone" {...props}></i>;
+        const BugIcon = (props) => <i data-lucide="bug" {...props}></i>;
+        const SkullIcon = (props) => <i data-lucide="skull" {...props}></i>;
+
+        const sfx = {
+            gainXp: () => {
+                const synth = new Tone.Synth().toDestination();
+                synth.volume.value = -10;
+                synth.triggerAttackRelease("C5", "32n");
+                setTimeout(() => synth.triggerAttackRelease("E5", "32n"), 100);
+            },
+            enemyAppear: () => {
+                const synth = new Tone.MembraneSynth().toDestination();
+                synth.volume.value = -5;
+                synth.triggerAttackRelease("C2", "8n");
+                setTimeout(() => synth.triggerAttackRelease("C1", "4n"), 150);
+            },
+            win: () => {
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -10;
+                synth.triggerAttackRelease(["C4", "E4", "G4"], "8n");
+                setTimeout(() => synth.triggerAttackRelease(["C5", "E5", "G5"], "4n"), 200);
+            },
+            lose: () => {
+                const synth = new Tone.FMSynth().toDestination();
+                synth.volume.value = -10;
+                synth.triggerAttackRelease("D3", "8n");
+                setTimeout(() => synth.triggerAttackRelease("A2", "4n"), 200);
+            },
+            levelUp: () => {
+                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                synth.volume.value = -5;
+                const now = Tone.now();
+                synth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
+                synth.triggerAttackRelease(["E4", "G4", "B4"], "8n", now + 0.2);
+                synth.triggerAttackRelease(["G4", "B4", "D5"], "8n", now + 0.4);
+                synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "2n", now + 0.6);
+            }
+        };
+
+        const playSound = async (type) => {
+            if (Tone.context.state !== 'running') {
+                await Tone.start();
+            }
+            if (sfx[type]) sfx[type]();
+        };
+
+        function App() {
+            const [xp, setXp] = useState(0);
+            const [log, setLog] = useState([]);
+            const logEndRef = useRef(null);
+
+            const [activeEnemy, setActiveEnemy] = useState(null);
+            const [pendingAction, setPendingAction] = useState(null);
+            const [battleResult, setBattleResult] = useState(null);
+            const [rewardNotice, setRewardNotice] = useState(null);
+            const [levelUpNotice, setLevelUpNotice] = useState(null);
+            const [inventory, setInventory] = useState([]);
+            
+            // Visual FX State
+            const [floatingTexts, setFloatingTexts] = useState([]);
+            const [isShaking, setIsShaking] = useState(false);
+            const [attackAnim, setAttackAnim] = useState(null); // 'player' or 'enemy'
+
+            const levels = [
+                { id: 1, title: "Subir mis habilidades", icon: <BookOpenIcon className="w-6 h-6" />, reqXp: 0, color: "text-purple-400" },
+                { id: 2, title: "Crear proyectos reales", icon: <TerminalIcon className="w-6 h-6" />, reqXp: 100, color: "text-blue-400" },
+                { id: 3, title: "Entrar al mundo profesional", icon: <BriefcaseIcon className="w-6 h-6" />, reqXp: 300, color: "text-green-400" },
+                { id: 4, title: "Crecer profesionalmente", icon: <TargetIcon className="w-6 h-6" />, reqXp: 500, color: "text-orange-400" },
+                { id: 5, title: "Independencia económica", icon: <DollarSignIcon className="w-6 h-6" />, reqXp: 3000, color: "text-red-400" },
+            ];
+
+            const actionsByLevel = {
+                1: [
+                    { desc: "Practicar lógica en Python", xp: 15 },
+                    { desc: "Estudiar un tema nuevo", xp: 10 },
+                    { desc: "Terminar un ejercicio práctico", xp: 20 },
+                    { desc: "Superar un error de código", xp: 25 },
+                ],
+                2: [
+                    { desc: "Aprender herramienta nueva", xp: 30 },
+                    { desc: "Mejorar código de proyecto", xp: 40 },
+                    { desc: "Terminar proyecto para portafolio", xp: 60 },
+                ],
+                3: [
+                    { desc: "Mejorar hoja de vida", xp: 40 },
+                    { desc: "Asistir a entrevista técnica", xp: 80 },
+                    { desc: "¡CONSEGUIR EL PRIMER TRABAJO!", xp: 300 }
+                ],
+                4: [
+                    { desc: "Cumplir entrega importante", xp: 50 },
+                    { desc: "Aprender tecnología del equipo", xp: 40 },
+                    { desc: "Proponer mejora en proyecto", xp: 100 },
+                ],
+                5: [
+                    { desc: "Elaborar presupuesto", xp: 40 },
+                    { desc: "Completar curso de finanzas", xp: 100 },
+                    { desc: "Realizar primera inversión", xp: 150 },
+                ]
+            };
+
+            const enemies = [
+                { name: "Procrastinación", weakness: "Organización y horarios", threat: "Alta", icon: <GhostIcon className="w-16 h-16" /> },
+                { name: "Miedo a equivocarme", weakness: "Práctica y aprendizaje", threat: "Media", icon: <FlameIcon className="w-16 h-16" /> },
+                { name: "Distracciones", weakness: "Concentración y control", threat: "Alta", icon: <SmartphoneIcon className="w-16 h-16" /> },
+                { name: "Falta de experiencia", weakness: "Proyectos y práctica", threat: "Media", icon: <BugIcon className="w-16 h-16" /> },
+                { name: "Rendirme (Jefe Final)", weakness: "Recordar mi objetivo final", threat: "Mortal", icon: <SkullIcon className="w-20 h-20" /> }
+            ];
+
+            const allTools = [
+                "Organización y horarios", 
+                "Práctica y aprendizaje", 
+                "Concentración y control", 
+                "Proyectos y práctica", 
+                "Recordar mi objetivo final",
+                "Ver videos en el celular"
+            ];
+
+            const smallRewards = ["Descansar", "Ver episodios de una serie", "Jugar videojuegos", "Darme un gusto"];
+            const bigRewards = ["Comprar algo que quiero", "Salir de viaje", "Celebrar logro", "Aportar a inversión"];
+
+            const currentLevelIndex = [...levels].reverse().findIndex(l => xp >= l.reqXp);
+            const currentLevel = levels[levels.length - 1 - currentLevelIndex] || levels[0];
+            const nextLevel = levels[levels.length - currentLevelIndex] || null;
+            const currentActions = actionsByLevel[currentLevel.id] || actionsByLevel[1];
+            
+            const progressPercent = nextLevel 
+                ? ((xp - currentLevel.reqXp) / (nextLevel.reqXp - currentLevel.reqXp)) * 100
+                : 100;
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            });
+
+            const showFloatingText = (text, x, y, color) => {
+                const id = Date.now() + Math.random();
+                setFloatingTexts(prev => [...prev, { id, text, x, y, color }]);
+                setTimeout(() => {
+                    setFloatingTexts(prev => prev.filter(ft => ft.id !== id));
+                }, 1000);
+            };
+
+            const triggerScreenShake = () => {
+                setIsShaking(true);
+                setTimeout(() => setIsShaking(false), 400);
+            };
+
+            const triggerEnemy = (actXp, actDesc) => {
+                const encounterChance = currentLevel.id === 5 ? 0.05 : 0.40; // Jefe final forzado o 40% normal
+                
+                if (Math.random() < encounterChance || (currentLevel.id === 5 && Math.random() < 0.2)) {
+                    const roll = Math.random() * 100;
+                    let randomEnemy;
+                    
+                    if (currentLevel.id === 5) {
+                        randomEnemy = enemies[4]; // Jefe Final
+                    } else if (roll < 45) {
+                        randomEnemy = enemies[0]; // Procrastinacion
+                    } else if (roll < 80) {
+                        randomEnemy = enemies[2]; // Distracciones
+                    } else if (roll < 94) {
+                        randomEnemy = enemies[3]; // Falta experiencia
+                    } else {
+                        randomEnemy = enemies[1]; // Miedo
+                    }
+
+                    setActiveEnemy(randomEnemy);
+                    setPendingAction({ xp: actXp, desc: actDesc });
+                    playSound('enemyAppear');
+                    
+                    setLog(prev => [...prev, { 
+                        id: `${Date.now()}-${Math.random()}`, 
+                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), 
+                        text: `⚠️ ¡ENEMIGO SALVAJE APARECE! ${randomEnemy.name}`, 
+                        type: 'danger' 
+                    }]);
+                    return true;
+                }
+                return false;
+            };
+
+            const processAction = (amount, description, skipReward = false) => {
+                const updatedXp = Math.max(0, xp + amount);
+                setXp(updatedXp);
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                const newLevelIndex = [...levels].reverse().findIndex(l => updatedXp >= l.reqXp);
+                const newLevel = levels[levels.length - 1 - newLevelIndex];
+                const isLevelUp = newLevel.id > currentLevel.id;
+
+                let newReward = null;
+                if (isLevelUp) {
+                    setLevelUpNotice(newLevel);
+                    playSound('levelUp');
+                    newReward = { type: 'GRANDE', text: bigRewards[Math.floor(Math.random() * bigRewards.length)] };
+                } else if (!skipReward && amount > 0 && Math.random() < 0.2) {
+                    newReward = { type: 'PEQUEÑA', text: smallRewards[Math.floor(Math.random() * smallRewards.length)] };
+                }
+
+                if (newReward) {
+                    setRewardNotice(newReward);
+                    setInventory(prev => [newReward, ...prev]);
+                }
+
+                setLog(prev => [
+                    ...prev, 
+                    { id: `${Date.now()}-1-${Math.random()}`, time, text: `[${amount >= 0 ? '+' : ''}${amount} XP] ${description}`, type: amount < 0 ? 'danger' : 'action' },
+                    ...(isLevelUp ? [{ id: `${Date.now()}-2-${Math.random()}`, time, text: `¡LEVEL UP! Nivel ${newLevel.id}: ${newLevel.title}`, type: 'levelup' }] : [])
+                ]);
+            };
+
+            const handleActionClick = (e, amount, description) => {
+                e.preventDefault();
+                // Activar audio context on first user click
+                Tone.start();
+
+                if (activeEnemy) return;
+                const enemyAppeared = triggerEnemy(amount, description);
+                if (!enemyAppeared) {
+                    // Posicion para el texto flotante (un poco al azar cerca del click)
+                    const x = e.clientX - 20 + (Math.random() * 40);
+                    const y = e.clientY - 30;
+                    showFloatingText(`+${amount} XP`, x, y, 'text-emerald-400');
+                    playSound('gainXp');
+                    processAction(amount, description);
+                }
+            };
+
+            const handleDefense = (tool) => {
+                const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                
+                if (tool === activeEnemy.weakness) {
+                    // Animación de ataque del jugador
+                    setAttackAnim('player');
+                    setTimeout(() => {
+                        playSound('win');
+                        setLog(prev => [...prev, { 
+                            id: `${Date.now()}-${Math.random()}`, time, 
+                            text: `⚔️ ¡GOLPE CRÍTICO a ${activeEnemy.name}! (+25 XP bono)`, 
+                            type: 'success' 
+                        }]);
+                        processAction(pendingAction.xp + 25, pendingAction.desc + " (Batalla Épica)");
+                        
+                        setBattleResult({
+                            type: 'win',
+                            title: `¡VICTORIA CONTRA ${activeEnemy.name.toUpperCase()}!`,
+                            message: `Usaste "${tool}". ¡Fue súper efectivo! Ganas bono de +25 XP.`
+                        });
+                        setActiveEnemy(null);
+                        setPendingAction(null);
+                        setAttackAnim(null);
+                    }, 400); // Wait for attack animation
+
+                } else {
+                    // Animación de ataque del enemigo
+                    setAttackAnim('enemy');
+                    setTimeout(() => {
+                        triggerScreenShake();
+                        playSound('lose');
+                        const penalty = 15;
+                        processAction(-penalty, `Fallo crítico ante ${activeEnemy.name}. (-${penalty} XP)`, true);
+                        
+                        setBattleResult({
+                            type: 'lose',
+                            title: `¡DERROTA ANTE ${activeEnemy.name.toUpperCase()}!`,
+                            message: `"${tool}" no hizo efecto. El monstruo atacó y perdiste -${penalty} XP.`
+                        });
+                        setActiveEnemy(null);
+                        setPendingAction(null);
+                        setAttackAnim(null);
+                    }, 400);
+                }
+            };
+
+            return (
+                <div className={`min-h-screen bg-slate-950 text-slate-300 font-mono p-4 sm:p-6 lg:p-8 ${isShaking ? 'animate-shake' : ''}`}>
+                    
+                    {/* Render Floating Texts */}
+                    {floatingTexts.map(ft => (
+                        <div 
+                            key={ft.id} 
+                            className={`fixed pointer-events-none z-50 text-2xl font-black ${ft.color} animate-float`}
+                            style={{ left: ft.x, top: ft.y }}
+                        >
+                            {ft.text}
+                        </div>
+                    ))}
+
+                    <header className="max-w-6xl mx-auto mb-8 bg-slate-900 border-2 border-slate-700 rounded-lg p-6 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
+                        <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+                            <div className="flex items-center gap-4">
+                                <div className="bg-indigo-900/50 p-4 rounded-xl border-2 border-indigo-500 shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+                                    <UserIcon className="w-10 h-10 text-indigo-400" />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-black text-white tracking-wider uppercase flex items-center gap-2">
+                                        ANGIE <span className="text-xs bg-indigo-600 text-white px-2 py-1 rounded ml-2 align-middle pixel-corners">P1</span>
+                                    </h1>
+                                    <p className="text-indigo-400">Clase: Desarrolladora</p>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 w-full max-w-xl bg-slate-950 p-4 rounded-xl border-2 border-slate-800 shadow-inner">
+                                <div className="flex justify-between items-end mb-2">
+                                    <div className="flex items-baseline gap-2">
+                                        <span className="text-sm text-slate-500">LVL</span>
+                                        <span className={`text-3xl font-black ${currentLevel.color}`}>{currentLevel.id}</span>
+                                        <span className={`text-sm ${currentLevel.color} hidden sm:inline`}>{currentLevel.title}</span>
+                                    </div>
+                                    <div className="text-right flex items-center gap-1">
+                                        <StarIcon className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                                        <span className="text-2xl font-bold text-yellow-400">{xp}</span>
+                                        <span className="text-xs text-yellow-600">XP</span>
+                                    </div>
+                                </div>
+                                
+                                <div className="h-4 bg-slate-900 rounded-full overflow-hidden border border-slate-700 relative">
+                                    <div 
+                                        className="h-full bg-gradient-to-r from-yellow-600 to-yellow-300 transition-all duration-700 ease-out relative"
+                                        style={{ width: `${progressPercent}%` }}
+                                    >
+                                        <div className="absolute top-0 right-0 bottom-0 w-8 bg-gradient-to-r from-transparent to-white opacity-30"></div>
+                                    </div>
+                                </div>
+                                <div className="text-right mt-1 text-xs text-slate-500">
+                                    {nextLevel ? `Siguiente nivel en: ${nextLevel.reqXp} XP` : '🏆 ¡NIVEL MÁXIMO!'}
+                                </div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <section className="bg-slate-900 border-2 border-slate-700 rounded-xl overflow-hidden shadow-lg">
+                                <div className="bg-slate-800 border-b-2 border-slate-700 p-4 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <PlayCircleIcon className="text-emerald-400 w-6 h-6 animate-pulse" />
+                                        <h2 className="text-xl font-black text-white tracking-wide">MISIONES [LVL {currentLevel.id}]</h2>
+                                    </div>
+                                </div>
+                                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {currentActions.map((act, idx) => (
+                                        <button
+                                            key={idx}
+                                            onClick={(e) => handleActionClick(e, act.xp, act.desc)}
+                                            disabled={activeEnemy !== null}
+                                            className={`flex items-center justify-between p-3 bg-slate-950 border-2 rounded-lg transition-all group text-left relative overflow-hidden active:scale-95
+                                                ${activeEnemy ? 'border-slate-800 opacity-50 cursor-not-allowed' : 'border-slate-700 hover:border-emerald-500 hover:shadow-[0_0_15px_rgba(16,185,129,0.2)]'}`}
+                                        >
+                                            <div className="absolute inset-0 bg-emerald-500 opacity-0 group-hover:opacity-10 transition-opacity"></div>
+                                            <span className="text-sm font-semibold group-hover:text-emerald-300 transition-colors z-10">{act.desc}</span>
+                                            <span className="bg-emerald-900/80 border border-emerald-500/50 text-emerald-400 font-black text-xs px-2 py-1 rounded z-10">
+                                                +{act.xp}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </section>
+
+                            <section className="bg-slate-900 border-2 border-slate-700 rounded-xl p-6 relative overflow-hidden">
+                                <h2 className="text-xl font-black text-white mb-6 flex items-center gap-2">
+                                    <TargetIcon className="text-indigo-400 w-6 h-6" /> ROADMAP
+                                </h2>
+                                <div className="space-y-4">
+                                    {levels.map((level) => {
+                                        const isCompleted = currentLevel.id > level.id;
+                                        const isActive = currentLevel.id === level.id;
+                                        const isLocked = currentLevel.id < level.id;
+
+                                        return (
+                                            <div key={level.id} className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                                                isActive ? 'bg-slate-800 border-indigo-500 shadow-[0_0_20px_rgba(99,102,241,0.2)] scale-[1.02]' : 
+                                                isCompleted ? 'bg-slate-900/50 border-emerald-900/50' : 'bg-slate-950 border-slate-800/50 opacity-50'
+                                            }`}>
+                                                <div className={`p-3 rounded-full ${isActive ? 'bg-indigo-900 text-indigo-400 animate-bounce-slow' : isCompleted ? 'bg-emerald-900/30 text-emerald-600' : 'bg-slate-900 text-slate-600'}`}>
+                                                    {level.icon}
+                                                </div>
+                                                <div className="flex-1">
+                                                    <h3 className={`font-bold ${isActive ? 'text-white' : isCompleted ? 'text-slate-400' : 'text-slate-600'}`}>
+                                                        Nivel {level.id}: {level.title}
+                                                    </h3>
+                                                    <p className="text-xs text-slate-500">REQ: {level.reqXp} XP</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </section>
+                        </div>
+
+                        <div className="space-y-8">
+                            <section className="bg-black border-2 border-slate-700 rounded-xl overflow-hidden flex flex-col h-72 shadow-lg">
+                                <div className="bg-slate-800 border-b-2 border-slate-700 p-2 flex items-center justify-between">
+                                    <span className="text-xs text-slate-400 font-bold flex items-center gap-2">
+                                        <TerminalIcon className="w-4 h-4" /> BATTLE_LOG.txt
+                                    </span>
+                                </div>
+                                <div className="p-4 flex-1 overflow-y-auto space-y-2 text-xs font-mono">
+                                    {log.length === 0 ? (
+                                        <div className="text-slate-600 italic animate-pulse">Esperando comando...</div>
+                                    ) : (
+                                        log.map(entry => (
+                                            <div key={entry.id} className={`border-l-2 pl-2 ${
+                                                entry.type === 'levelup' ? 'border-yellow-400 text-yellow-400 font-bold' : 
+                                                entry.type === 'danger' ? 'border-red-500 text-red-400' : 
+                                                entry.type === 'success' ? 'border-indigo-400 text-indigo-400 font-bold' : 
+                                                'border-emerald-500 text-emerald-400'
+                                            }`}>
+                                                <span className="text-slate-600 opacity-70">[{entry.time}]</span> {entry.text}
+                                            </div>
+                                        ))
+                                    )}
+                                    <div ref={logEndRef} />
+                                </div>
+                            </section>
+
+                            <section className="bg-gradient-to-br from-amber-900/20 to-amber-600/10 border-2 border-amber-600/40 rounded-xl p-6 text-center shadow-lg relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI4IiBoZWlnaHQ9IjgiPgo8cmVjdCB3aWR0aD0iOCIgaGVpZ2h0PSI4IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9IjAuMDUiLz4KPC9zdmc+')] opacity-20"></div>
+                                <TrophyIcon className="w-16 h-16 text-amber-500 mx-auto mb-3 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse" />
+                                <h2 className="text-xl font-black text-amber-400 mb-2 tracking-widest">OBJETIVO FINAL</h2>
+                                <p className="text-sm text-amber-200/90 italic font-semibold z-10 relative">
+                                    "Construir mi camino y tener la libertad de tomar decisiones sobre mi futuro."
+                                </p>
+                                
+                                {inventory.length > 0 && (
+                                    <div className="mt-6 pt-4 border-t-2 border-amber-900/50 text-left relative z-10">
+                                        <h3 className="text-sm font-black text-amber-500 mb-3 flex items-center gap-2"><GiftIcon className="w-4 h-4"/> INVENTARIO DE LOGROS</h3>
+                                        <ul className="text-xs space-y-2 max-h-40 overflow-y-auto pr-2">
+                                            {inventory.map((inv, i) => (
+                                                <li key={i} className="text-amber-100 bg-amber-950/80 p-2.5 rounded-lg flex justify-between items-center border border-amber-700/50 shadow-inner">
+                                                    <span>{inv.text}</span>
+                                                    <span className={`text-[10px] font-black px-2 py-1 rounded ${inv.type === 'GRANDE' ? 'bg-amber-600 text-white' : 'bg-amber-900 text-amber-400'}`}>
+                                                        {inv.type}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </section>
+                        </div>
+                    </main>
+
+                    {}
+                    {activeEnemy && (
+                        <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                            <div className="bg-slate-900 border-4 border-red-500 rounded-2xl max-w-2xl w-full p-6 sm:p-8 shadow-[0_0_60px_rgba(239,68,68,0.3)]">
+                                
+                                {/* VS Screen Header */}
+                                <div className="text-center mb-6">
+                                    <h2 className="text-3xl sm:text-4xl font-black text-red-500 uppercase tracking-widest mb-1 animate-pulse">
+                                        {activeEnemy.name.includes("Rendirme") ? "🔥 FINAL BOSS 🔥" : "¡ENEMIGO ENCONTRADO!"}
+                                    </h2>
+                                    <p className="text-slate-400 text-sm bg-slate-950 inline-block px-4 py-1 rounded-full border border-slate-800">
+                                        Misión interceptada: {pendingAction.desc}
+                                    </p>
+                                </div>
+
+                                {/* RPG Sprites Area */}
+                                <div className="flex justify-between items-center mb-8 bg-slate-950 p-6 rounded-xl border-2 border-slate-800 relative overflow-hidden">
+                                    <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.02)_50%,transparent_75%)] bg-[length:20px_20px]"></div>
+                                    
+                                    {/* Player */}
+                                    <div className={`text-center w-1/3 flex flex-col items-center relative z-10 ${attackAnim === 'player' ? 'animate-attack-l' : ''}`}>
+                                        <div className="bg-indigo-900/50 p-4 rounded-full border-2 border-indigo-500 mb-2">
+                                            <UserIcon className="w-12 h-12 text-indigo-400" />
+                                        </div>
+                                        <div className="font-black text-indigo-400 bg-indigo-950/80 px-3 py-1 rounded border border-indigo-900">ANGIE</div>
+                                    </div>
+
+                                    {/* VS Text */}
+                                    <div className="w-1/3 text-center relative z-10">
+                                        <div className="text-4xl font-black text-slate-600 italic transform -skew-x-12">VS</div>
+                                    </div>
+
+                                    {/* Enemy */}
+                                    <div className={`text-center w-1/3 flex flex-col items-center relative z-10 ${attackAnim === 'enemy' ? 'animate-attack-r' : ''}`}>
+                                        <div className="text-red-500 mb-2 animate-bounce-slow drop-shadow-[0_0_15px_rgba(239,68,68,0.8)]">
+                                            {activeEnemy.icon}
+                                        </div>
+                                        <div className="font-black text-red-500 bg-red-950/80 px-3 py-1 rounded border border-red-900 text-sm max-w-full truncate">
+                                            {activeEnemy.name}
+                                        </div>
+                                        <div className="text-[10px] text-red-400/70 mt-1 uppercase">Peligro: {activeEnemy.threat}</div>
+                                    </div>
+                                </div>
+                                
+                                {/* Action Menu */}
+                                <div className="bg-slate-800 p-4 rounded-xl border-2 border-slate-700">
+                                    <h3 className="text-sm font-black text-white mb-3 flex items-center gap-2">
+                                        <SwordsIcon className="w-4 h-4"/> ¿QUÉ DEBE HACER ANGIE?
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                        {[
+                                            activeEnemy.weakness,
+                                            ...allTools.filter(t => t !== activeEnemy.weakness).sort(() => 0.5 - Math.random()).slice(0, 3)
+                                        ].sort(() => 0.5 - Math.random()).map((tool, i) => (
+                                            <button
+                                                key={i}
+                                                onClick={() => handleDefense(tool)}
+                                                disabled={attackAnim !== null}
+                                                className="w-full p-3 bg-slate-950 border-2 border-slate-700 rounded-lg hover:bg-slate-700 hover:border-indigo-400 transition-all text-sm font-bold text-left flex items-center gap-3 active:scale-95 disabled:opacity-50"
+                                            >
+                                                <ShieldIcon className="w-4 h-4 text-indigo-400 shrink-0" />
+                                                {tool}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {}
+                    {battleResult && (
+                        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+                            <div className={`bg-slate-900 border-4 rounded-2xl max-w-md w-full p-8 text-center shadow-2xl ${battleResult.type === 'win' ? 'border-emerald-500 shadow-[0_0_60px_rgba(16,185,129,0.3)]' : 'border-red-500 shadow-[0_0_60px_rgba(239,68,68,0.3)]'}`}>
+                                {battleResult.type === 'win' ? (
+                                    <CheckCircleIcon className="w-24 h-24 text-emerald-400 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+                                ) : (
+                                    <XCircleIcon className="w-24 h-24 text-red-500 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(239,68,68,0.5)]" />
+                                )}
+                                <h2 className={`text-2xl font-black uppercase tracking-widest mb-3 ${battleResult.type === 'win' ? 'text-emerald-400' : 'text-red-500'}`}>
+                                    {battleResult.title}
+                                </h2>
+                                <p className="text-slate-300 text-sm font-semibold mb-8 bg-slate-950 p-4 rounded-xl border border-slate-800 leading-relaxed">
+                                    {battleResult.message}
+                                </p>
+                                <button 
+                                    onClick={() => setBattleResult(null)}
+                                    className={`w-full font-black py-4 px-4 rounded-xl transition-transform active:scale-95 uppercase tracking-widest text-white shadow-lg ${battleResult.type === 'win' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-900/50' : 'bg-red-600 hover:bg-red-500 shadow-red-900/50'}`}
+                                >
+                                    Continuar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {levelUpNotice && (
+                        <div className="fixed inset-0 bg-amber-950/90 flex items-center justify-center z-50 p-4 backdrop-blur-md">
+                            <div className="bg-slate-900 border-4 border-yellow-400 rounded-3xl max-w-lg w-full p-8 text-center transform scale-105 shadow-[0_0_100px_rgba(250,204,21,0.4)]">
+                                <StarIcon className="w-28 h-28 text-yellow-400 mx-auto mb-6 drop-shadow-[0_0_20px_rgba(250,204,21,0.8)] animate-pulse" />
+                                <h2 className="text-4xl font-black text-yellow-400 uppercase tracking-widest mb-3">¡LEVEL UP!</h2>
+                                <div className="bg-yellow-950/50 border-2 border-yellow-500/50 p-4 rounded-xl mb-6">
+                                    <p className="text-sm text-yellow-500 font-bold mb-1">NUEVO NIVEL ALCANZADO</p>
+                                    <p className="text-2xl font-black text-white">Nivel {levelUpNotice.id}: {levelUpNotice.title}</p>
+                                </div>
+                                <button 
+                                    onClick={() => setLevelUpNotice(null)}
+                                    className="w-full bg-gradient-to-r from-yellow-500 to-yellow-400 hover:from-yellow-400 hover:to-yellow-300 text-slate-950 font-black py-4 px-4 rounded-xl transition-transform active:scale-95 uppercase tracking-widest shadow-lg shadow-yellow-600/50"
+                                >
+                                    ¡Aceptar Siguiente Reto!
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {rewardNotice && (
+                        <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+                            <div className="bg-slate-900 border-4 border-emerald-500 rounded-2xl max-w-sm w-full p-8 text-center transform hover:scale-105 transition-transform duration-300 shadow-[0_0_60px_rgba(16,185,129,0.2)]">
+                                <GiftIcon className="w-20 h-20 text-emerald-400 mx-auto mb-4 drop-shadow-[0_0_15px_rgba(16,185,129,0.5)] animate-bounce" />
+                                <h2 className="text-2xl font-black text-emerald-400 uppercase tracking-widest mb-2">¡LOOT ENCONTRADO!</h2>
+                                <p className="text-emerald-500 font-bold text-xs mb-4 uppercase">Recompensa {rewardNotice.type}</p>
+                                <p className="text-white font-semibold text-lg mb-8 bg-slate-950 p-4 rounded-xl border border-emerald-900/50">
+                                    {rewardNotice.text}
+                                </p>
+                                <button 
+                                    onClick={() => setRewardNotice(null)}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-black py-4 px-4 rounded-xl transition-transform active:scale-95 shadow-lg shadow-emerald-900/50 uppercase tracking-widest"
+                                >
+                                    Reclamar
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
