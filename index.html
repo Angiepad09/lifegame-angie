@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LifeGame Angie</title>
+    <title>LifeGame Angie - Tu Aventura Profesional</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -112,35 +112,51 @@
         const ZapIcon = (props) => <i data-lucide="zap" {...props}></i>;
         const EyeOffIcon = (props) => <i data-lucide="eye-off" {...props}></i>;
         const HelpCircleIcon = (props) => <i data-lucide="help-circle" {...props}></i>;
+        const CheckSquareIcon = (props) => <i data-lucide="check-square" {...props}></i>;
+        const CpuIcon = (props) => <i data-lucide="cpu" {...props}></i>;
+
+        // Limiter / Master Limiter node to prevent clipping when multiple sounds play at once
+        let masterLimiter = null;
+        const getMasterLimiter = () => {
+            if (!masterLimiter && window.Tone) {
+                masterLimiter = new Tone.Limiter(-1).toDestination();
+            }
+            return masterLimiter;
+        };
 
         const sfx = {
             gainXp: () => {
-                const synth = new Tone.Synth().toDestination();
-                synth.volume.value = -12;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.Synth().connect(limiter || Tone.Destination);
+                synth.volume.value = -14;
                 synth.triggerAttackRelease("C5", "32n");
                 setTimeout(() => synth.triggerAttackRelease("E5", "32n"), 100);
             },
             enemyAppear: () => {
-                const synth = new Tone.MembraneSynth().toDestination();
-                synth.volume.value = -6;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.MembraneSynth().connect(limiter || Tone.Destination);
+                synth.volume.value = -8;
                 synth.triggerAttackRelease("C2", "8n");
                 setTimeout(() => synth.triggerAttackRelease("C1", "4n"), 150);
             },
             win: () => {
-                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-                synth.volume.value = -10;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.PolySynth(Tone.Synth).connect(limiter || Tone.Destination);
+                synth.volume.value = -12;
                 synth.triggerAttackRelease(["C4", "E4", "G4"], "8n");
                 setTimeout(() => synth.triggerAttackRelease(["C5", "E5", "G5"], "4n"), 200);
             },
             lose: () => {
-                const synth = new Tone.FMSynth().toDestination();
-                synth.volume.value = -10;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.FMSynth().connect(limiter || Tone.Destination);
+                synth.volume.value = -12;
                 synth.triggerAttackRelease("D3", "8n");
                 setTimeout(() => synth.triggerAttackRelease("A2", "4n"), 200);
             },
             levelUp: () => {
-                const synth = new Tone.PolySynth(Tone.Synth).toDestination();
-                synth.volume.value = -6;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.PolySynth(Tone.Synth).connect(limiter || Tone.Destination);
+                synth.volume.value = -8;
                 const now = Tone.now();
                 synth.triggerAttackRelease(["C4", "E4", "G4"], "8n", now);
                 synth.triggerAttackRelease(["E4", "G4", "B4"], "8n", now + 0.2);
@@ -148,8 +164,9 @@
                 synth.triggerAttackRelease(["C5", "E5", "G5", "C6"], "2n", now + 0.6);
             },
             achievement: () => {
-                const synth = new Tone.Synth({ oscillator: { type: 'triangle' } }).toDestination();
-                synth.volume.value = -8;
+                const limiter = getMasterLimiter();
+                const synth = new Tone.Synth({ oscillator: { type: 'triangle' } }).connect(limiter || Tone.Destination);
+                synth.volume.value = -10;
                 const now = Tone.now();
                 synth.triggerAttackRelease("G4", "16n", now);
                 synth.triggerAttackRelease("B4", "16n", now + 0.1);
@@ -167,6 +184,74 @@
             } catch (e) {
                 console.log("Audio play suppressed:", e);
             }
+        };
+
+        
+        const TechTreeModal = ({ onClose, unlockedTechs, onUnlockTech, xp }) => {
+            const techTree = [
+                { id: 'python', name: 'Dominio de Python', cost: 100, desc: 'Bases de programación sólidas', icon: '🐍' },
+                { id: 'git', name: 'Control Git & GitHub', cost: 250, desc: 'Manejo de versiones profesional', icon: '🐙' },
+                { id: 'react', name: 'Desarrollo React.js', cost: 500, desc: 'Creación de interfaces web modernas', icon: '⚛️' },
+                { id: 'backend', name: 'Backend & APIs', cost: 1000, desc: 'Conexión con servidores y BD', icon: '🗄️' },
+                { id: 'fullstack', name: 'Arquitectura Fullstack', cost: 2000, desc: 'Dominio integral de desarrollo', icon: '🚀' },
+            ];
+
+            return (
+                <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-[70] p-4 backdrop-blur-md font-mono">
+                    <div className="bg-slate-900 border-4 border-purple-500 rounded-2xl p-6 shadow-[0_0_40px_rgba(168,85,247,0.3)] max-w-lg w-full relative">
+                        <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-red-500 z-10">
+                            <XCircleIcon className="w-6 h-6" />
+                        </button>
+                        
+                        <div className="text-center mb-6">
+                            <CpuIcon className="w-12 h-12 text-purple-400 mx-auto mb-2 animate-bounce-slow" />
+                            <h2 className="text-xl font-black text-white uppercase tracking-widest">Árbol Tecnológico</h2>
+                            <p className="text-xs text-slate-400">Desbloquea habilidades clave invirtiendo tu XP</p>
+                        </div>
+
+                        <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+                            {techTree.map((tech) => {
+                                const isUnlocked = unlockedTechs.includes(tech.id);
+                                const canAfford = xp >= tech.cost;
+
+                                return (
+                                    <div key={tech.id} className={`p-4 rounded-xl border-2 flex items-center justify-between gap-4 transition-all ${
+                                        isUnlocked ? 'bg-purple-950/30 border-purple-500/60 shadow-[0_0_15px_rgba(168,85,247,0.15)]' : 'bg-slate-950 border-slate-800'
+                                    }`}>
+                                        <div className="text-3xl shrink-0 bg-slate-900 p-2.5 rounded-xl border border-slate-800">
+                                            {tech.icon}
+                                        </div>
+                                        <div className="flex-1">
+                                            <h3 className={`font-bold text-sm ${isUnlocked ? 'text-purple-300' : 'text-slate-300'}`}>
+                                                {tech.name}
+                                            </h3>
+                                            <p className="text-xs text-slate-500 mt-0.5">{tech.desc}</p>
+                                            <span className="text-[10px] text-yellow-400 font-bold">Costo: {tech.cost} XP</span>
+                                        </div>
+                                        <div>
+                                            {isUnlocked ? (
+                                                <span className="bg-purple-600 text-white text-[10px] font-black px-3 py-1.5 rounded-xl uppercase">
+                                                    Adquirido
+                                                </span>
+                                            ) : (
+                                                <button
+                                                    onClick={() => onUnlockTech(tech.id, tech.cost)}
+                                                    disabled={!canAfford}
+                                                    className={`text-xs font-black px-4 py-2 rounded-xl transition-all ${
+                                                        canAfford ? 'bg-yellow-500 hover:bg-yellow-400 text-slate-950 shadow-lg shadow-yellow-600/30 active:scale-95' : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                                                    }`}
+                                                >
+                                                    Desbloquear
+                                                </button>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </div>
+            );
         };
 
         const MiniGame = ({ onFinish, onClose }) => {
@@ -222,7 +307,7 @@
                         setTimeLeft(prev => {
                             if (prev <= 1) {
                                 setGameState('end');
-                                return;
+                                return ;
                             }
                             return prev - 1;
                         });
@@ -268,6 +353,7 @@
                 let reqId;
 
                 const update = () => {
+                    if (gameState !== 'playing') return;
                     const data = gameData.current;
                     const p = data.player;
                     const keys = data.keys;
@@ -293,7 +379,6 @@
                         if (e.y <= 0 || e.y >= 276) e.baseDy *= -1;
                     });
 
-                    // Si Angie está invulnerable (transparente), no puede recolectar items ni recibir daño de bugs
                     if (!p.invulnerable) {
                         data.items.forEach((item) => {
                             const dx = p.x - item.x;
@@ -319,7 +404,9 @@
                                 playSound('lose');
                                 
                                 if (data.lives <= 0) {
+                                    setLives(0);
                                     setGameState('end');
+                                    return;
                                 } else {
                                     p.invulnerable = true;
                                     setTimeout(() => { if(gameData.current) gameData.current.player.invulnerable = false; }, 1500);
@@ -358,7 +445,6 @@
                 return () => cancelAnimationFrame(reqId);
             }, [gameState, timeLeft]);
 
-            // Recomended reward formula: Max score in minigame ~ 100-120 XP, divided by 3 for balanced economy
             const finalCalculatedXp = Math.min(100, Math.floor(score * 0.8));
 
             return (
@@ -457,6 +543,8 @@
             const [log, setLog] = useState([]);
             const logEndRef = useRef(null);
 
+            const [finalBossUnlocked, setFinalBossUnlocked] = useState(false);
+            const [gameCompleted, setGameCompleted] = useState(false);
             const [activeEnemy, setActiveEnemy] = useState(null);
             const [pendingAction, setPendingAction] = useState(null);
             const [battleResult, setBattleResult] = useState(null);
@@ -467,8 +555,9 @@
             const [showMinigame, setShowMinigame] = useState(false);
             const [showStatsModal, setShowStatsModal] = useState(false);
             const [showAchievementsModal, setShowAchievementsModal] = useState(false);
+            const [showTechTreeModal, setShowTechTreeModal] = useState(false);
+            const [unlockedTechs, setUnlockedTechs] = useState([]);
             
-            // Estadísticas personales del jugador
             const [stats, setStats] = useState({
                 missionsCompleted: 0,
                 bossesDefeated: 0,
@@ -477,7 +566,6 @@
                 streakDays: 1
             });
 
-            // Sistema de logros
             const [unlockedAchievements, setUnlockedAchievements] = useState([]);
 
             const achievementsList = [
@@ -525,7 +613,6 @@
                 ]
             };
 
-            // Más Jefes Finales con variedad de debilidades y amenazas
             const bosses = [
                 { name: "Procrastinación", weakness: "Organización y horarios", threat: "Alta", icon: <GhostIcon className="w-14 h-14" /> },
                 { name: "Miedo al rechazo", weakness: "Práctica y aprendizaje", threat: "Media", icon: <FlameIcon className="w-14 h-14" /> },
@@ -568,7 +655,6 @@
                 if (window.lucide) window.lucide.createIcons();
             });
 
-            // Verificar logros tras actualizar stats o xp
             useEffect(() => {
                 achievementsList.forEach(ach => {
                     if (!unlockedAchievements.includes(ach.id)) {
@@ -588,17 +674,17 @@
             }, [stats, xp]);
 
             const triggerEnemy = (actXp, actDesc) => {
-                // Balance: 30% encounter rate so gameplay has healthy rhythm between normal missions and encounters
+
+                if (finalBossUnlocked) {
+                    return false;
+                }
                 if (Math.random() < 0.30) {
                     let randomBoss;
                     const roll = Math.random() * 100;
                     
-                    if (currentLevel.id === 5 && roll < 40) {
-                        randomBoss = bosses[7]; // Jefe Supremo
-                    } else {
-                        const availableBosses = bosses.slice(0, 7);
-                        randomBoss = availableBosses[Math.floor(Math.random() * availableBosses.length)];
-                    }
+                    const availableBosses = bosses.slice(0, 7);
+                    randomBoss = availableBosses[Math.floor(Math.random() * availableBosses.length)];
+                    
 
                     setActiveEnemy(randomBoss);
                     setPendingAction({ xp: actXp, desc: actDesc });
@@ -617,6 +703,19 @@
 
             const processAction = (amount, description, skipReward = false) => {
                 const updatedXp = Math.max(0, xp + amount);
+
+                if (updatedXp >= 3000 && !finalBossUnlocked) {
+                    setFinalBossUnlocked(true);
+                    
+                    setLog(prev => [
+                    ...prev,
+                    {
+                        id: `${Date.now()}-${Math.random()}`,time: new Date().toLocaleTimeString([], {hour: '2-digit',minute: '2-digit'}),
+                        text: "☠️ ¡EL JEFE SUPREMO HA DESPERTADO!",
+                        type: "danger"
+                    }
+                    ]);
+                }
                 setXp(updatedXp);
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
@@ -667,12 +766,15 @@
                 const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 
                 if (tool === activeEnemy.weakness) {
+                    const isFinalBoss = activeEnemy.name === "Rendirme (Jefe Supremo)";
                     playSound('win');
                     setStats(prev => ({ ...prev, bossesDefeated: prev.bossesDefeated + 1 }));
                     
-                    // Balance bonus: defeating boss gives +20 XP
                     processAction(pendingAction.xp + 20, pendingAction.desc + ` (Derrotaste a ${activeEnemy.name})`);
                     
+                    if (isFinalBoss) {
+                        setGameCompleted(true);
+                    }
                     setBattleResult({
                         type: 'win',
                         title: `¡VICTORIA CONTRA ${activeEnemy.name.toUpperCase()}!`,
@@ -696,7 +798,6 @@
             return (
                 <div className="min-h-screen bg-slate-950 text-slate-300 font-mono p-4 sm:p-6 lg:p-8">
                     
-                    {/* Header Principal */}
                     <header className="max-w-6xl mx-auto mb-8 bg-slate-900 border-2 border-slate-700 rounded-xl p-6 shadow-2xl relative overflow-hidden">
                         <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500"></div>
                         <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
@@ -733,7 +834,15 @@
                             </div>
                         </div>
 
-                        {/* Barra de Progreso XP */}
+                        <div className="mt-4 pt-4 border-t border-slate-800 flex flex-wrap gap-3">
+                            <button 
+                                onClick={() => setShowTechTreeModal(true)}
+                                className="bg-purple-950/80 hover:bg-purple-900 border border-purple-500/50 text-purple-300 px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all active:scale-95 shadow"
+                            >
+                                <CpuIcon className="w-4 h-4 text-purple-400" /> Árbol Tech ({unlockedTechs.length})
+                            </button>
+                        </div>
+
                         <div className="mt-6 pt-6 border-t border-slate-800">
                             <div className="flex justify-between items-end mb-2">
                                 <div className="flex items-baseline gap-2">
@@ -760,7 +869,6 @@
                         </div>
                     </header>
 
-                    {/* Contenido Principal */}
                     <main className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-8">
                             <section className="bg-slate-900 border-2 border-slate-700 rounded-xl overflow-hidden shadow-lg">
@@ -772,7 +880,7 @@
                                     <span className="text-xs text-slate-400">XP Balanceada</span>
                                 </div>
                                 <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {currentActions.map((act, idx) => (
+                                    {!finalBossUnlocked && currentActions.map((act, idx) => (
                                         <button
                                             key={idx}
                                             onClick={(e) => handleActionClick(e, act.xp, act.desc)}
@@ -787,6 +895,17 @@
                                             </span>
                                         </button>
                                     ))}
+
+                                    {finalBossUnlocked && !gameCompleted && (
+                                        <button onClick={() => {
+                                            if (activeEnemy) return;
+                                            setActiveEnemy(bosses[7]);
+                                            setPendingAction({xp: 0,desc: "Batalla Final"});
+                                            }}
+                                            className="w-full bg-red-700 hover:bg-red-600 border-2 border-red-500 text-white font-black p-4 rounded-xl animate-pulse shadow-[0_0_20px_rgba(239,68,68,0.4)]">☠️ ENFRENTAR
+                                            </button>
+
+                                    )}
                                 </div>
                                 <div className="w-full flex-1 bg-slate-800/50 p-4 border-t-2 border-slate-700 flex items-center justify-center">
                                     <button 
@@ -835,8 +954,31 @@
                             </section>
                         </div>
 
-                        {/* Columna Lateral */}
                         <div className="space-y-8">
+                            <section className="bg-gradient-to-br from-amber-900/20 to-amber-600/10 border-2 border-amber-600/40 rounded-xl p-6 text-center shadow-lg relative overflow-hidden">
+                                <TrophyIcon className="w-14 h-14 text-amber-500 mx-auto mb-3 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse" />
+                                <h2 className="text-lg font-black text-amber-400 mb-2 tracking-widest">OBJETIVO FINAL</h2>
+                                <p className="text-xs text-amber-200/90 italic font-semibold leading-relaxed">
+                                    "Construir mi camino y tener la libertad de tomar decisiones sobre mi futuro profesional."
+                                </p>
+                                
+                                {inventory.length > 0 && (
+                                    <div className="mt-5 pt-4 border-t-2 border-amber-900/50 text-left">
+                                        <h3 className="text-xs font-black text-amber-500 mb-3 flex items-center gap-2"><GiftIcon className="w-4 h-4"/> LOOT RECLAMADO</h3>
+                                        <ul className="text-xs space-y-2 max-h-36 overflow-y-auto pr-1">
+                                            {inventory.map((inv, i) => (
+                                                <li key={i} className="text-amber-100 bg-amber-950/80 p-2 rounded-lg flex justify-between items-center border border-amber-700/50">
+                                                    <span className="truncate mr-2">{inv.text}</span>
+                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${inv.type === 'GRANDE' ? 'bg-amber-600 text-white' : 'bg-amber-900 text-amber-400'}`}>
+                                                        {inv.type}
+                                                    </span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    </div>
+                                )}
+                            </section>
+                            
                             <section className="bg-black border-2 border-slate-700 rounded-xl overflow-hidden flex flex-col h-72 shadow-lg">
                                 <div className="bg-slate-800 border-b-2 border-slate-700 p-3 flex items-center justify-between">
                                     <span className="text-xs text-slate-400 font-bold flex items-center gap-2">
@@ -862,34 +1004,9 @@
                                     <div ref={logEndRef} />
                                 </div>
                             </section>
-
-                            <section className="bg-gradient-to-br from-amber-900/20 to-amber-600/10 border-2 border-amber-600/40 rounded-xl p-6 text-center shadow-lg relative overflow-hidden">
-                                <TrophyIcon className="w-14 h-14 text-amber-500 mx-auto mb-3 drop-shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse" />
-                                <h2 className="text-lg font-black text-amber-400 mb-2 tracking-widest">OBJETIVO FINAL</h2>
-                                <p className="text-xs text-amber-200/90 italic font-semibold leading-relaxed">
-                                    "Construir mi camino y tener la libertad de tomar decisiones sobre mi futuro profesional."
-                                </p>
-                                
-                                {inventory.length > 0 && (
-                                    <div className="mt-5 pt-4 border-t-2 border-amber-900/50 text-left">
-                                        <h3 className="text-xs font-black text-amber-500 mb-3 flex items-center gap-2"><GiftIcon className="w-4 h-4"/> LOOT RECLAMADO</h3>
-                                        <ul className="text-xs space-y-2 max-h-36 overflow-y-auto pr-1">
-                                            {inventory.map((inv, i) => (
-                                                <li key={i} className="text-amber-100 bg-amber-950/80 p-2 rounded-lg flex justify-between items-center border border-amber-700/50">
-                                                    <span className="truncate mr-2">{inv.text}</span>
-                                                    <span className={`text-[9px] font-black px-1.5 py-0.5 rounded shrink-0 ${inv.type === 'GRANDE' ? 'bg-amber-600 text-white' : 'bg-amber-900 text-amber-400'}`}>
-                                                        {inv.type}
-                                                    </span>
-                                                </li>
-                                            ))}
-                                        </ul>
-                                    </div>
-                                )}
-                            </section>
                         </div>
                     </main>
 
-                    {/* MODAL: Estadísticas Personales */}
                     {showStatsModal && (
                         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                             <div className="bg-slate-900 border-4 border-indigo-500 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
@@ -923,7 +1040,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Sistema de Logros */}
                     {showAchievementsModal && (
                         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                             <div className="bg-slate-900 border-4 border-amber-500 rounded-2xl max-w-lg w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
@@ -970,7 +1086,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Combate con Jefe */}
                     {activeEnemy && (
                         <div className="fixed inset-0 bg-slate-950/90 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                             <div className="bg-slate-900 border-4 border-red-500 rounded-2xl max-w-xl w-full p-6 sm:p-8 shadow-[0_0_60px_rgba(239,68,68,0.3)]">
@@ -1030,7 +1145,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Resultado de Batalla */}
                     {battleResult && (
                         <div className="fixed inset-0 bg-black/85 flex items-center justify-center z-50 p-4 backdrop-blur-md">
                             <div className={`bg-slate-900 border-4 rounded-2xl max-w-sm w-full p-6 text-center shadow-2xl ${battleResult.type === 'win' ? 'border-emerald-500 shadow-[0_0_60px_rgba(16,185,129,0.3)]' : 'border-red-500 shadow-[0_0_60px_rgba(239,68,68,0.3)]'}`}>
@@ -1055,7 +1169,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Notificación de Logro */}
                     {achievementNotice && (
                         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4 backdrop-blur-md">
                             <div className="bg-slate-900 border-4 border-amber-400 rounded-3xl max-w-sm w-full p-6 text-center shadow-[0_0_80px_rgba(250,204,21,0.4)]">
@@ -1073,7 +1186,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Level Up */}
                     {levelUpNotice && (
                         <div className="fixed inset-0 bg-amber-950/90 flex items-center justify-center z-50 p-4 backdrop-blur-md">
                             <div className="bg-slate-900 border-4 border-yellow-400 rounded-3xl max-w-md w-full p-8 text-center shadow-[0_0_100px_rgba(250,204,21,0.4)]">
@@ -1093,7 +1205,6 @@
                         </div>
                     )}
 
-                    {/* MODAL: Recompensa / Loot */}
                     {rewardNotice && (
                         <div className="fixed inset-0 bg-slate-950/80 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
                             <div className="bg-slate-900 border-4 border-emerald-500 rounded-2xl max-w-sm w-full p-6 text-center shadow-[0_0_50px_rgba(16,185,129,0.2)]">
@@ -1125,6 +1236,44 @@
                             }} 
                         />
                     )}
+
+                    {showTechTreeModal && (
+                        <TechTreeModal 
+                            onClose={() => setShowTechTreeModal(false)}
+                            unlockedTechs={unlockedTechs}
+                            xp={xp}
+                            onUnlockTech={(techId, cost) => {
+                                if (xp >= cost) {
+                                    setXp(prev => prev - cost);
+                                    setUnlockedTechs(prev => [...prev, techId]);
+                                    playSound('achievement');
+                                    setLog(prev => [...prev, {
+                                        id: `${Date.now()}-${Math.random()}`,
+                                        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                                        text: `🧠 ¡Habilidad desbloqueada en el Árbol Tech! (-${cost} XP)`,
+                                        type: 'success'
+                                    }]);
+                                }
+                            }}
+                        />
+                    )}
+                    {gameCompleted && (
+                        <div className="fixed inset-0 bg-black/95 flex items-center justify-center z-[200] p-6">
+                            <div className="max-w-xl text-center">
+                                <div className="text-7xl mb-6">🏆</div>
+                                <h1 className="text-5xl font-black text-yellow-400 mb-6">LIFEGAME COMPLETADO</h1>
+                                <p className="text-white text-lg mb-4">Has derrotado al Jefe Supremo:</p>
+                                <p className="text-red-400 text-2xl font-black mb-8">☠️ Rendirme</p>
+                                <div className="bg-slate-900 border border-yellow-500 rounded-2xl p-6 mb-6">
+                                <p className="text-slate-200 mb-4">No llegaste hasta aquí por suerte.</p>
+                                <p className="text-slate-200 mb-4">Lo lograste porque seguiste avanzando incluso cuando aparecieron obstáculos.</p>
+                                <p className="text-yellow-400 font-bold">La meta nunca fue llegar al Nivel 5.</p>
+                                <p className="text-yellow-400 font-bold">La meta fue convertirte en la persona capaz de alcanzarlo.</p>
+
+                            </div>
+                            <div className="text-slate-400 text-sm">XP Final: {xp}</div>
+                            </div>
+                        </div>)}
                 </div>
             );
         }
